@@ -5,24 +5,95 @@ Description: >
 
   Sample SAM Template for sam-app
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 180
 
 Resources:
   HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
       Handler: handler_sample.handle
       Runtime: python3.8
       Events:
         HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /hello
             Method: get
+
+  DataImportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler_data_import.handle
+      Runtime: python3.8
+      Role: arn:aws:iam::301598911115:role/poc_data_load
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref S3Bucket
+            Events: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: "txt"
+
+  DbWriteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler_db_write.handle
+      Runtime: python3.8
+      Role: arn:aws:iam::301598911115:role/poc_data_load
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SimpleQueue.Arn
+            BatchSize: 1
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: poc-data-load-v1
+      VersioningConfiguration:
+        Status: Enabled
+
+  SimpleQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400
+      QueueName: "SimpleQueuePoc"
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SimpleQueueDead.Arn
+        maxReceiveCount: 2
+
+  SimpleQueueDead:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400
+      QueueName: "SimpleQueuePocDlq"
+      VisibilityTimeout: 180
+
+  PocTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: "user_id"
+          AttributeType: "S"        
+      KeySchema: 
+        - AttributeName: "user_id"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: "25"
+        WriteCapacityUnits: "25"
+      TableName: "pocDataImportSam"        
+
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function

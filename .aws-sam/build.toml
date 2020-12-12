@@ -5,6 +5,6 @@
 codeuri = "."
 runtime = "python3.8"
 source_md5 = ""
-functions = ["HelloWorldFunction"]
+functions = ["HelloWorldFunction", "DataImportFunction", "DbWriteFunction"]
 
 [layer_build_definitions]
