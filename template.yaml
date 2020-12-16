@@ -56,6 +56,32 @@ Resources:
             Queue: !GetAtt SimpleQueue.Arn
             BatchSize: 1
 
+  DlqSnsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler_dlq_sns.handle
+      Runtime: python3.8
+      Role: arn:aws:iam::301598911115:role/poc_data_load
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SimpleQueueDead.Arn
+            BatchSize: 1
+
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "SampleTopicPoc"
+
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: sarkarpranab66@gmail.com
+      Protocol: email
+      TopicArn: !Ref 'MySNSTopic'
+
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
